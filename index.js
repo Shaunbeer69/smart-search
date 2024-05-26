@@ -8,65 +8,44 @@ const port = 3000;
 // Configure Express to parse JSON body
 app.use(express.json());
 
-
 const extractEntities = async (searchTerm) => {
-    const terms = searchTerm.split(' ');
+    const terms = searchTerm.split(' ').filter(term => term !== 'in' && term !== 'or' && term !== 'and');
 
-    // Initialize sets to store found entities
-    const cities = new Set();
-    const brands = new Set();
-    const dishTypes = new Set();
-    const diets = new Set();
-
-    // Loop through each term to identify entities
-    for (const term of terms) {
-        if (term === 'in' || term === 'or' || term === 'and') { continue; }
-
-        const city = await City.findAll({
+    // Batch query all entities
+    const [cities, brands, dishTypes, diets] = await Promise.all([
+        City.findAll({
             where: {
                 name: {
-                    [Op.iLike]: `%${term}%` // Using case-insensitive partial match
+                    [Op.iLike]: { [Op.any]: terms.map(term => `%${term}%`) }
                 }
             }
-        });
-        city.forEach(c => cities.add(c));
-
-        const brand = await Brand.findAll({
+        }),
+        Brand.findAll({
             where: {
                 name: {
-                    [Op.iLike]: `%${term}%` // Using case-insensitive partial match
+                    [Op.iLike]: { [Op.any]: terms.map(term => `%${term}%`) }
                 }
             }
-        });
-        brand.forEach(b => brands.add(b));
-
-        const dishType = await DishType.findAll({
+        }),
+        DishType.findAll({
             where: {
                 name: {
-                    [Op.iLike]: `%${term}%` // Using case-insensitive partial match
+                    [Op.iLike]: { [Op.any]: terms.map(term => `%${term}%`) }
                 }
             }
-        });
-        dishType.forEach(d => dishTypes.add(d));
-
-        const diet = await Diet.findAll({
+        }),
+        Diet.findAll({
             where: {
                 name: {
-                    [Op.iLike]: `%${term}%` // Using case-insensitive partial match
+                    [Op.iLike]: { [Op.any]: terms.map(term => `%${term}%`) }
                 }
             }
-        });
-        diet.forEach(d => diets.add(d));
-    }
+        })
+    ]);
 
-    // Convert sets to arrays
-    const uniqueCities = Array.from(cities);
-    const uniqueBrands = Array.from(brands);
-    const uniqueDishTypes = Array.from(dishTypes);
-    const uniqueDiets = Array.from(diets);
-
-    return generateCombinations(uniqueCities, uniqueBrands, uniqueDishTypes, uniqueDiets);
+    return generateCombinations(cities, brands, dishTypes, diets);
 };
+
 
 
 
