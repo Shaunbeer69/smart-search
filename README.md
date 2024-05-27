@@ -21,7 +21,9 @@ Docker:
 Development:
 1. npm -i
 2. docker-compose run db (Update config.js.  "host": "localhost")
-3. node index.js
+3. npm run migrate
+4. npm run seed
+5. node index.js
 
 ### Testing
 
