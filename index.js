@@ -10,42 +10,49 @@ app.use(express.json());
 
 const extractEntities = async (searchTerm) => {
     const terms = searchTerm.split(' ').filter(term => term !== 'in' && term !== 'or' && term !== 'and');
+    const likeClauses = terms.map(term => `%${term}%`);
 
-    // Batch query all entities
-    const [cities, brands, dishTypes, diets] = await Promise.all([
-        City.findAll({
-            where: {
-                name: {
-                    [Op.iLike]: { [Op.any]: terms.map(term => `%${term}%`) }
-                }
-            }
-        }),
-        Brand.findAll({
-            where: {
-                name: {
-                    [Op.iLike]: { [Op.any]: terms.map(term => `%${term}%`) }
-                }
-            }
-        }),
-        DishType.findAll({
-            where: {
-                name: {
-                    [Op.iLike]: { [Op.any]: terms.map(term => `%${term}%`) }
-                }
-            }
-        }),
-        Diet.findAll({
-            where: {
-                name: {
-                    [Op.iLike]: { [Op.any]: terms.map(term => `%${term}%`) }
-                }
-            }
-        })
-    ]);
+    const whereClauses = likeClauses.map(() => 'name ILIKE ?').join(' OR ');
 
-    return generateCombinations(cities, brands, dishTypes, diets);
+    const query = `SELECT 'City' AS entityType, id, name FROM "Cities" WHERE (${whereClauses}) UNION ALL SELECT 'Brand' AS entityType, id, name FROM "Brands" WHERE (${whereClauses}) UNION ALL SELECT 'DishType' AS entityType, id, name FROM "DishTypes" WHERE (${whereClauses}) UNION ALL SELECT 'Diet' AS entityType, id, name FROM "Diets" WHERE (${whereClauses})`;
+
+    try {
+        // Execute the query directly without replacements
+        const results = await sequelize.query(query, {
+            replacements: [].concat(...likeClauses, ...likeClauses, ...likeClauses, ...likeClauses),
+            type: sequelize.QueryTypes.SELECT
+        });
+
+   
+        const cities = removeDuplicateObjects(results.filter(result => {return result.entitytype === 'City'}));
+        const brands =  removeDuplicateObjects(results.filter(result => result.entitytype === 'Brand'));
+        const dishTypes =  removeDuplicateObjects(results.filter(result => result.entitytype === 'DishType'));
+        const diets =  removeDuplicateObjects(results.filter(result => result.entitytype === 'Diet'));
+    
+
+        return generateCombinations(cities, brands, dishTypes, diets);
+    } catch (error) {
+        console.error('Error executing SQL query:', error);
+        throw error; // Rethrow the error for handling in the caller function
+    }
 };
 
+
+function removeDuplicateObjects(arr) {
+    const uniqueSet = new Set();
+
+    // Filter out duplicates based on the entire object content
+    const uniqueArray = arr.filter(obj => {
+        const strRepresentation = JSON.stringify(obj);
+        if (!uniqueSet.has(strRepresentation)) {
+            uniqueSet.add(strRepresentation);
+            return true;
+        }
+        return false;
+    });
+
+    return uniqueArray;
+}
 
 
 
