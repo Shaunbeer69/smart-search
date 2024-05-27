@@ -18,16 +18,16 @@ const extractEntities = async (searchTerm) => {
 
     try {
         // Execute the query directly without replacements
-        const results = await sequelize.query(query, {
+        const results = removeDuplicateObjects(await sequelize.query(query, {
             replacements: [].concat(...likeClauses, ...likeClauses, ...likeClauses, ...likeClauses),
             type: sequelize.QueryTypes.SELECT
-        });
+        }));
 
    
-        const cities = removeDuplicateObjects(results.filter(result => {return result.entitytype === 'City'}));
-        const brands =  removeDuplicateObjects(results.filter(result => result.entitytype === 'Brand'));
-        const dishTypes =  removeDuplicateObjects(results.filter(result => result.entitytype === 'DishType'));
-        const diets =  removeDuplicateObjects(results.filter(result => result.entitytype === 'Diet'));
+        const cities = results.filter(result => {return result.entitytype === 'City'});
+        const brands =  results.filter(result => result.entitytype === 'Brand');
+        const dishTypes =  results.filter(result => result.entitytype === 'DishType');
+        const diets =  results.filter(result => result.entitytype === 'Diet');
     
 
         return generateCombinations(cities, brands, dishTypes, diets);
